@@ -1,34 +1,26 @@
 
-package Catalyst::Plugin::Bunch;
-use Moose;
+use MooseX::Declare;
 
-use JavaScript::Minifier::XS qw(minify);
-use File::Util;
+class Catalyst::Plugin::Bunch {
 
-sub load_static {
-    my ( $c, $js, $css, %static ) = @_;
+    use JavaScript::Minifier::XS qw(minify);
 
-    my $loader = File::Util->new;
-
-    my $path = $c->config->{ Bunch }->{ path_to } || 'root/static/js/';
+    sub load_static {
+        my ( $c, $js, $css, %static ) = @_;
         
-    foreach ( @$js ) {
-        eval {
-            $static{ js } .= $c->model('File::JS')->file( $_ )->slurp;
-      #      $c->log->info( 
-      #          $c->model('File::JS')->file( $_ ) . ': ' .
-      #          $c->model('File::JS')->file( $_ )->slurp
-      #      );
-            #$loader->load_file( $path . $_ ) );
-        };
-        $c->log->error( $@ ) if $@;
-    }
+        foreach ( @$js ) {
+            eval {
+                $static{ js } .= $c->model('File::JS')->file( $_ )->slurp;
+            };
+            $c->log->error( $@ ) if $@;
+        }
 
-    $static{ js } = '<script>' . minify( $static{ js } ) . '</script>';
+        $static{ js } = '<script>' . minify( $static{ js } ) . '</script>';
 
-    $c->stash->{ static } = \%static;
+        $c->stash->{ static } = \%static;
     
-#    $c->log->info($c->stash->{ static }->{ js });
-}
+    }#load_static
 
-1;
+}#class
+
+
