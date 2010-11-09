@@ -5,25 +5,30 @@ use Moose;
 use JavaScript::Minifier::XS qw(minify);
 use File::Util;
 
-#has path_to => ( is => 'rw', isa => 'Str', default => 'root/static/js/' );
-
-#has loader => ( is => 'ro', isa => 'File::Util', 
-#    default => sub { File::Util->new; } );
-
 sub load_static {
-    my ( $c, $js, $css ) = @_;
+    my ( $c, $js, $css, %static ) = @_;
 
     my $loader = File::Util->new;
-    my $path = 'root/static/js/';
 
-    my %static;
-
+    my $path = $c->config->{ Bunch }->{ path_to } || 'root/static/js/';
+             $c->log->info( 
+                $c->model('File::JS')->file( 'user/index.js' ) . ': ' .
+                $c->model('File::JS')->file( 'user/index.js' )->slurp
+            );
+    
     foreach ( @$js ) {
         eval {
-            $static{ js } .= minify( $loader->load_file( $path . $_ ) );
+            $static{ js } .= minify( $c->model('File::JS')->file( $_ ) );
+            $c->log->info( 
+                $c->model('File::JS')->file( $_ ) . ': ' .
+                $c->model('File::JS')->file( $_ )->slurp
+            );
+            #$loader->load_file( $path . $_ ) );
         };
         $c->log->error( $@ ) if $@;
     }
+
+    $static{ js } = '<script>' . $static{ js } . '</script>';
 
     $c->stash->{ static } = \%static;
     
