@@ -15,7 +15,7 @@ class Catalyst::Plugin::Bunch {
         my $js;
         foreach ( ( @$default, @$files ) ) {
             eval {
-                $js .= $model->file( $_ )->slurp;
+                $js .= $model->load( $_ );
             };
             $c->log->error( $@ ) if $@;
         }
