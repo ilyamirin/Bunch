@@ -3,23 +3,32 @@ use MooseX::Declare;
 
 class Catalyst::Plugin::Bunch {
 
-    use JavaScript::Minifier::XS qw(minify);
+    #has js_minifier => ( is => 'ro', isa => '', default => sub {} );
 
-    sub load_static {
-        my ( $c, $js, $css, %static ) = @_;
+    sub load_js {
+        my ( $c, $files ) = @_;
+
+        my $model = $c->model( $c->config->{ Bunch }->{ model}->{ js } );
+
+        my $default = $c->config->{ Bunch }->{ default_libs }->{ js };
         
-        foreach ( @$js ) {
+        my $js;
+        foreach ( ( @$default, @$files ) ) {
             eval {
-                $static{ js } .= $c->model('File::JS')->file( $_ )->slurp;
+                $js .= $model->file( $_ )->slurp;
             };
             $c->log->error( $@ ) if $@;
         }
 
-        $static{ js } = '<script>' . minify( $static{ js } ) . '</script>';
+        use JavaScript::Minifier::XS qw(minify);
 
-        $c->stash->{ static } = \%static;
+        $js = minify( $js ) if $c->config->{ Bunch }->{ minify };
+
+        $c->log->info( $js );
+
+        $c->stash->{ static }->{ js } = '<script>' . $js . '</script>';
     
-    }#load_static
+    }#load_js
 
 }#class
 
