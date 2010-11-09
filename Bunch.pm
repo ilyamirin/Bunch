@@ -3,7 +3,8 @@ use MooseX::Declare;
 
 class Catalyst::Plugin::Bunch {
 
-    #has js_minifier => ( is => 'ro', isa => '', default => sub {} );
+    has md5 => ( is => 'ro', isa => 'Digest::MD5', 
+        default => sub { Digest::MD5->new } );
 
     sub load_js {
         my ( $c, $files ) = @_;
@@ -22,11 +23,23 @@ class Catalyst::Plugin::Bunch {
 
         use JavaScript::Minifier::XS qw(minify);
 
-        $js = minify( $js ) if $c->config->{ Bunch }->{ minify };
+        use Digest::MD5 qw/ md5_hex /;
+        my $md5 = md5_hex( $js );
 
-        $c->log->info( $js );
+        if ( my $file = $model->exist( "bunch/$md5.js" ) ) {
+            $c->stash->{ static }->{ js } = 
+                '<script>' . $file . '</script>';
+            $c->log->info("Банч с именем $md5.js загружен." );
+        } 
+        else {
+            $js = minify( $js ) if $c->config->{ Bunch }->{ minify };
+            $c->stash->{ static }->{ js } = '<script>' . $js . '</script>';
+            $model->save( "bunch/$md5.js", $js );
+            $c->log->info("Банч с именем $md5.js создан и загружен." );
+        } 
 
-        $c->stash->{ static }->{ js } = '<script>' . $js . '</script>';
+#        $c->log->info( $js );
+
     
     }#load_js
 
