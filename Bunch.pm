@@ -21,26 +21,24 @@ class Catalyst::Plugin::Bunch {
             $c->log->error( $@ ) if $@;
         }
 
-        use JavaScript::Minifier::XS qw(minify);
-
         use Digest::MD5 qw/ md5_hex /;
         my $md5 = md5_hex( $js );
 
         if ( my $file = $model->exist( "bunch/$md5.js" ) ) {
             $c->stash->{ static }->{ js } = 
                 '<script>' . $file . '</script>';
-            $c->log->info("Банч с именем $md5.js загружен." );
+            $c->log->info("Банч $md5.js загружен." );
         } 
         else {
+            use JavaScript::Minifier::XS qw(minify);
             $js = minify( $js ) if $c->config->{ Bunch }->{ minify };
             $c->stash->{ static }->{ js } = '<script>' . $js . '</script>';
             $model->save( "bunch/$md5.js", $js );
-            $c->log->info("Банч с именем $md5.js создан и загружен." );
+            $c->log->info("Банч $md5.js создан." );
         } 
 
-#        $c->log->info( $js );
+        return $c->stash->{ static }->{ js };
 
-    
     }#load_js
 
 }#class
