@@ -11,24 +11,20 @@ sub load_static {
     my $loader = File::Util->new;
 
     my $path = $c->config->{ Bunch }->{ path_to } || 'root/static/js/';
-             $c->log->info( 
-                $c->model('File::JS')->file( 'user/index.js' ) . ': ' .
-                $c->model('File::JS')->file( 'user/index.js' )->slurp
-            );
-    
+        
     foreach ( @$js ) {
         eval {
-            $static{ js } .= minify( $c->model('File::JS')->file( $_ ) );
-            $c->log->info( 
-                $c->model('File::JS')->file( $_ ) . ': ' .
-                $c->model('File::JS')->file( $_ )->slurp
-            );
+            $static{ js } .= $c->model('File::JS')->file( $_ )->slurp;
+      #      $c->log->info( 
+      #          $c->model('File::JS')->file( $_ ) . ': ' .
+      #          $c->model('File::JS')->file( $_ )->slurp
+      #      );
             #$loader->load_file( $path . $_ ) );
         };
         $c->log->error( $@ ) if $@;
     }
 
-    $static{ js } = '<script>' . $static{ js } . '</script>';
+    $static{ js } = '<script>' . minify( $static{ js } ) . '</script>';
 
     $c->stash->{ static } = \%static;
     
