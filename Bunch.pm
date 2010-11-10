@@ -6,40 +6,52 @@ class Catalyst::Plugin::Bunch {
     has md5 => ( is => 'ro', isa => 'Digest::MD5', 
         default => sub { Digest::MD5->new } );
 
-    sub load_js {
-        my ( $c, $files ) = @_;
+    method _load ( $c, $type, $files ) {
 
-        my $model = $c->model( $c->config->{ Bunch }->{ model}->{ js } );
+        my $model = $c->model( $c->config->{ Bunch }->{ model}->{ $type } );
 
-        my $default = $c->config->{ Bunch }->{ default_libs }->{ js };
+        my $default = $c->config->{ Bunch }->{ default_libs }->{ $type };
         
-        my $js;
+        my $text;
         foreach ( ( @$default, @$files ) ) {
             eval {
-                $js .= $model->load( $_ );
+                $text .= $model->load( $_ );
             };
             $c->log->error( $@ ) if $@;
         }
 
         use Digest::MD5 qw/ md5_hex /;
-        my $md5 = md5_hex( $js );
+        my $md5 = md5_hex( $text );
 
         if ( my $file = $model->exist( "bunch/$md5.js" ) ) {
-            $c->stash->{ static }->{ js } = 
+            $c->stash->{ static }->{ $type } = 
                 '<script>' . $file . '</script>';
             $c->log->info("Банч $md5.js загружен." );
         } 
         else {
-            use JavaScript::Minifier::XS qw(minify);
-            $js = minify( $js ) if $c->config->{ Bunch }->{ minify };
-            $c->stash->{ static }->{ js } = '<script>' . $js . '</script>';
-            $model->save( "bunch/$md5.js", $js );
+            if ( $c->config->{ Bunch }->{ minify } ) {
+                my $minifier = 
+                    $c->config->{ Bunch }->{ minifiers }->{ $type };
+                eval "use $minifier qw/ minify /";
+                $text = minify( $text ) ;
+            }
+            $c->stash->{ static }->{ $type } = 
+                '<script>' . $text . '</script>';
+            $model->save( "bunch/$md5.js", $text );
             $c->log->info("Банч $md5.js создан." );
         } 
 
-        return $c->stash->{ static }->{ js };
+        return $c->stash->{ static }->{ $text };
 
-    }#load_js
+    }#_load
+
+    method load_static ( $c ) {
+        
+        while ( my ( $k, $v ) = each %{ $c->stash->{ static } } ) {
+            $self->_load( $c, $k, $v );
+        }
+
+   }#load_static
 
 }#class
 
