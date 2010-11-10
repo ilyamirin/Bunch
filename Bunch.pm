@@ -8,29 +8,29 @@ class Catalyst::Plugin::Bunch {
 
     method _load ( $c, $type, $files ) {
 
-        my $model = $c->model( $c->config->{ Bunch }->{ model}->{ $type } );
+        my $config = $c->config->{ Bunch };
+
+        my $model = $c->model( $config->{ model}->{ $type } );
        
-        my $default = $c->config->{ Bunch }->{ default_libs }->{ $type };
+        my $default = $config->{ default_libs }->{ $type };
         
         my $text;
         foreach ( ( @$default, @$files ) ) {
-            eval {
-                $text .= $model->load( $_ );
-            };
+            eval { $text .= $model->load( $_ ); };
             $c->log->error( $@ ) if $@;
         }
 
         use Digest::MD5 qw/ md5_hex /;
-        my $md5 = md5_hex( $text );
+        my $md5 = md5_hex( $text . $config->{ minify } );
 
         if ( my $file = $model->exist( "bunch/$md5" ) ) {
             $c->stash->{ static }->{ $type } = $model->url_to("bunch/$md5");
             $c->log->info("Банч $md5 типа $type загружен." );
         } 
         else {
-            if ( $c->config->{ Bunch }->{ minify } ) {
+            if ( $config->{ minify } ) {
                 my $minifier = 
-                    $c->config->{ Bunch }->{ minifiers }->{ $type };
+                    $config->{ minifiers }->{ $type };
                 eval "use $minifier qw/ minify /";
                 $text = minify( $text ) ;
             }
