@@ -9,7 +9,7 @@ class Catalyst::Plugin::Bunch {
     method _load ( $c, $type, $files ) {
 
         my $model = $c->model( $c->config->{ Bunch }->{ model}->{ $type } );
-
+       
         my $default = $c->config->{ Bunch }->{ default_libs }->{ $type };
         
         my $text;
@@ -23,10 +23,9 @@ class Catalyst::Plugin::Bunch {
         use Digest::MD5 qw/ md5_hex /;
         my $md5 = md5_hex( $text );
 
-        if ( my $file = $model->exist( "bunch/$md5.js" ) ) {
-            $c->stash->{ static }->{ $type } = 
-                '<script>' . $file . '</script>';
-            $c->log->info("Банч $md5.js загружен." );
+        if ( my $file = $model->exist( "bunch/$md5" ) ) {
+            $c->stash->{ static }->{ $type } = $model->url_to("bunch/$md5");
+            $c->log->info("Банч $md5 типа $type загружен." );
         } 
         else {
             if ( $c->config->{ Bunch }->{ minify } ) {
@@ -35,10 +34,9 @@ class Catalyst::Plugin::Bunch {
                 eval "use $minifier qw/ minify /";
                 $text = minify( $text ) ;
             }
-            $c->stash->{ static }->{ $type } = 
-                '<script>' . $text . '</script>';
-            $model->save( "bunch/$md5.js", $text );
-            $c->log->info("Банч $md5.js создан." );
+            $model->save( "bunch/$md5", $text );
+            $c->stash->{ static }->{ $type } = $model->url_to("bunch/$md5");
+            $c->log->info("Банч $md5 типа $type создан и загружен." );
         } 
 
         return $c->stash->{ static }->{ $text };
