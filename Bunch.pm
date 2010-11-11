@@ -1,75 +1,78 @@
 
-use MooseX::Declare;
+package Catalyst::Plugin::Bunch;
+use Moose;
 
-class Catalyst::Plugin::Bunch {
+use Digest::MD5 qw/ md5_hex /;
 
-    has md5 => ( is => 'ro', isa => 'Digest::MD5', 
-        default => sub { Digest::MD5->new } );
+has md5 => ( is => 'ro', isa => 'Digest::MD5', 
+    default => sub { Digest::MD5->new } );
 
-    has c => ( is => 'rw', isa => 'Object' );
+has c => ( is => 'rw', isa => 'Object' );
 
-    method _load ( $type, $files ) {
+sub _load {
+    my ( $self, $type, $files ) = @_;
 
-        my $config = $self->c->config->{ Bunch };
+    my $config = $self->c->config->{ Bunch };
 
-        my $model = $self->c->model( $config->{ model}->{ $type } );
+    my $model = $self->c->model( $config->{ model}->{ $type } );
        
-        my $default = $config->{ default_libs }->{ $type };
+    my $default = $config->{ default_libs }->{ $type };
         
-        my $text;
-        foreach ( ( @$default, @$files ) ) {
-            eval { $text .= $model->load( $_ ); };
-            $self->c->log->error( $@ ) if $@;
-        }
-
-        use Digest::MD5 qw/ md5_hex /;
-        my $md5 = md5_hex( $text . $config->{ minify } );
-
-        if ( my $file = $model->exist( "bunch/$md5" ) ) {
-            $self->c->stash->{ static }->{ $type } = 
-                $model->url_to("bunch/$md5");
-            $self->c->log->info("Банч $md5 типа $type загружен." );
-        } 
-        else {
-            if ( $config->{ minify } ) {
-                my $minifier = 
-                    $config->{ minifiers }->{ $type };
-                eval "use $minifier qw/ minify /";
-                $text = minify( $text ) ;
-            }
-            $model->save( "bunch/$md5", $text );
-            $self->c->stash->{ static }->{ $type } = 
-                $model->url_to("bunch/$md5");
-            $self->c->log->info("Банч $md5 типа $type создан и загружен." );
-        } 
-
-        return $self->c->stash->{ static }->{ $text };
-
-    }#_load
-
-    sub bunch {
-        return Catalyst::Plugin::Bunch->new( c => shift );
+    my $text;
+    foreach ( ( @$default, @$files ) ) {
+        eval { $text .= $model->load( $_ ); };
+        $self->c->log->error( $@ ) if $@;
     }
 
-    method load_static {
-        
-        while ( my ( $k, $v ) = each %{ $self->c->stash->{ static } } ) {
-            $self->_load( $k, $v );
-        }
+    my $md5 = md5_hex( $text . $config->{ minify } );
 
-    }#load_static
+    if ( my $file = $model->exist( "bunch/$md5" ) ) {
+        $self->c->stash->{ static }->{ $type } = 
+            $model->url_to("bunch/$md5");
+        $self->c->log->info("Банч $md5 типа $type загружен." );
 
-    sub add_css {
-        my ( $c, $file ) = @_;
+    } 
+    else {
+        if ( $config->{ minify } ) {
+            my $minifier = $config->{ minifiers }->{ $type };
+            eval "use $minifier qw/ minify /";
+            $text = minify( $text ) ;
 
-        $c->log->info( $file );
+        }#if
 
-        push @{ $c->stash->{ static }->{ css } }, $file;
+        $model->save( "bunch/$md5", $text );
+        $self->c->stash->{ static }->{ $type } = 
+           $model->url_to("bunch/$md5");
+        $self->c->log->info("Банч $md5 типа $type создан и загружен." );
 
-        $c->log->info( $_ ) foreach @{ $c->stash->{ static }->{ css } };
+    } #else if
 
-    }#add_static
+    return $self->c->stash->{ static }->{ $text };
 
-}#class
+}#_load
 
+sub load_static {        
+    my $self = shift;
 
+    while ( my ( $k, $v ) = each %{ $self->c->stash->{ static } } ) {
+        $self->_load( $k, $v );
+    }
+
+}#load_static
+
+sub bunch {
+    return Catalyst::Plugin::Bunch->new( c => shift );
+}
+
+sub AUTOLOAD {
+    my ( $self, $file ) = @_;  
+
+    our $AUTOLOAD;
+
+    $AUTOLOAD =~ /^.+_(.+)$/;
+
+    push @{ $self->c->stash->{ static }->{ $1 } }, $file;
+
+};#AUTOLOAD
+
+1;
