@@ -1,6 +1,6 @@
 
-package Catalyst::Plugin::Bunch;
-use Moose;
+package Catalyst::Plugin::Bunch::Slave;
+use MooseX::Singleton;
 
 use Digest::MD5 qw/ md5_hex /;
 
@@ -60,10 +60,6 @@ sub load_static {
 
 }#load_static
 
-sub bunch {
-    return Catalyst::Plugin::Bunch->new( c => shift );
-}
-
 sub AUTOLOAD {
     my ( $self, $file ) = @_;  
 
@@ -74,5 +70,17 @@ sub AUTOLOAD {
     push @{ $self->c->stash->{ static }->{ $1 } }, $file;
 
 };#AUTOLOAD
+
+package Catalyst::Plugin::Bunch;
+
+sub bunch {    
+
+    my $slave = Catalyst::Plugin::Bunch::Slave->instance;
+
+    $slave->c( shift ) unless defined $slave->c;
+
+    return $slave;
+
+}
 
 1;
