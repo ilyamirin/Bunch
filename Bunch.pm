@@ -55,7 +55,10 @@ sub _load {
 sub load_static {        
     my $self = shift;
 
+    use List::MoreUtils qw/ uniq /;
+
     while ( my ( $k, $v ) = each %{ $self->store } ) {
+        @$v = uniq @$v;
         $self->_load( $k, $v );
     }
 
@@ -70,7 +73,7 @@ sub AUTOLOAD {
 
     push @{ $self->store->{ $1 } }, $file;
 
-};#AUTOLOAD
+}#AUTOLOAD
 
 package Catalyst::Plugin::Bunch;
 
