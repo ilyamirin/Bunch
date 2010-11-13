@@ -21,8 +21,10 @@ sub _load {
     my $model = $self->c->model( $config->{ model }->{ $type } );
        
     my $default = $config->{ default_libs }->{ $type };
+
+    my @hash_source = ( %$files, $config->{ minify } );
          
-    my $md5 = md5_hex( join '', values %$files, $config->{ minify } );
+    my $md5 = md5_hex( join( '', @hash_source ) );
 
     if ( my $file = $model->exist( "bunch/$md5" ) ) {
         $self->static->{ $type } = $model->url_to("bunch/$md5");
@@ -61,6 +63,8 @@ sub load_static {
     while ( my ( $k, $v ) = each %{ $self->store } ) {
         $self->_load( $k, $v );
     }
+
+    $self->store( {} );
 
 }#load_static
 
