@@ -19,12 +19,12 @@ sub _load {
     my $config = $self->c->config->{ Bunch };
 
     my $model = $self->c->model( $config->{ model }->{ $type } );
-       
-    my $default = $config->{ default_libs }->{ $type };
 
-    my @hash_source = ( %$files, $config->{ minify } );
-         
-    my $md5 = md5_hex( join( '', @hash_source ) );
+    my @lm = map { $model->last_modified ( $_ ) } @$files;
+
+#    $self->c->log->info( join ' ', ( @$files, @lm, $config->{ minify } ) );
+
+    my $md5 = md5_hex( join '', ( @$files, @lm, $config->{ minify } ) );
 
     if ( my $file = $model->exist( "bunch/$md5" ) ) {
         $self->static->{ $type } = $model->url_to("bunch/$md5");
@@ -32,8 +32,11 @@ sub _load {
 
     } 
     else { 
+        my $default = $config->{ default_libs }->{ $type };
+
         my $text;
-        foreach ( ( @$default, keys %$files ) ) {
+        foreach ( ( @$default, @$files ) ) {
+            $self->c->log->info( $_ );
             eval { $text .= $model->load( $_ ); };
             $self->c->log->error( $@ ) if $@;
         }
@@ -56,12 +59,9 @@ sub _load {
 sub load_static {        
     my $self = shift;
 
-    use List::MoreUtils qw/ uniq /;
-
     while ( my ( $k, $v ) = each %{ $self->store } ) {
         $self->_load( $k, $v );
-        $self->c->log->info( $_ ) foreach keys %$v;
-   }
+    }
 
     $self->store( {} );
 
@@ -70,7 +70,7 @@ sub load_static {
 }#load_static
 
 sub AUTOLOAD {
-    my ( $self, $file ) = @_;  
+    my ( $self, $file, $priority ) = @_;  
 
     our $AUTOLOAD;
 
@@ -78,11 +78,9 @@ sub AUTOLOAD {
     
     return unless $1;
 
-    my $config = $self->c->config->{ Bunch };
+    $priority = 100 unless $priority;
 
-    my $model = $self->c->model( $config->{ model }->{ $1 } );
-
-    $self->store->{ $1 }->{ $file } = $model->last_modified( $file );
+    push @{ $self->store->{ $1 } }, $file;
 
     return;
 
