@@ -51,8 +51,6 @@ sub _load {
 
     } #else if
 
-    return $self->static->{ $type };
-
 }#_load
 
 sub load_static {        
@@ -62,9 +60,12 @@ sub load_static {
 
     while ( my ( $k, $v ) = each %{ $self->store } ) {
         $self->_load( $k, $v );
-    }
+        $self->c->log->info( $_ ) foreach keys %$v;
+   }
 
     $self->store( {} );
+
+    return;
 
 }#load_static
 
@@ -82,6 +83,8 @@ sub AUTOLOAD {
     my $model = $self->c->model( $config->{ model }->{ $1 } );
 
     $self->store->{ $1 }->{ $file } = $model->last_modified( $file );
+
+    return;
 
 }#AUTOLOAD
 
