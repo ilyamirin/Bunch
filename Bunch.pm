@@ -17,24 +17,26 @@ sub load {
 
     my $model = $self->c->model( $config->{ model }->{ $type } );
 
+    my $lang = $self->c->session->{ locale }->{ lang };
+    map { $_ = "$lang/$_" if $model->exist( "$lang/$_" ) } @$files; 
+
+    $self->c->log->info( $lang );
+    $self->c->log->info( $_ ) foreach @{ $self->$type };
+
     my @lm = map { $model->last_modified( $_ ) } @$files;
 
     use Digest::MD5 qw/ md5_hex /;
     my $md5 = md5_hex( join '', ( @$files, @lm, $config->{ minify } ) );
 
-    if ( my $file = $model->exist( "bunch/$md5" ) ) {        
-        $self->c->log->info("Банч $md5 типа $type загружен." );
-        return $model->url_to("bunch/$md5");
+    if ( $model->exist( "bunch/$md5" ) ) {        
+        $self->c->log->info( "Банч $md5 типа $type загружен." );
 
     } 
     else { 
         my $default = $config->{ default_libs }->{ $type };
 
         my $text;
-        foreach ( ( @$default, @$files ) ) {
-            eval { $text .= $model->load( $_ ); };
-            $self->c->log->error( $@ ) if $@;
-        }
+        $text .= $model->load( $_ ) foreach ( @$default, @$files );
 
         if ( $config->{ minify } ) {
             my $minifier = $config->{ minifiers }->{ $type };
@@ -44,12 +46,14 @@ sub load {
         }#if
 
         $model->save( "bunch/$md5", $text );
-        $self->c->log->info("Банч $md5 типа $type создан и загружен." );
-        $self->$type( [ ] );
 
-        return $model->url_to("bunch/$md5");
+        $self->c->log->info( "Банч $md5 типа $type создан и загружен." );
 
     }#else if
+
+    $self->$type( [ ] );
+
+    return $model->url_to( "bunch/$md5" );
 
 }#load
 
