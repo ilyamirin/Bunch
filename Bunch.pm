@@ -80,13 +80,12 @@ sub AUTOLOAD {
 package Catalyst::Plugin::Bunch;
 
 sub bunch {    
-
     my $slave = Catalyst::Plugin::Bunch::Slave->instance;
 
-    $slave->c( shift ) unless defined $slave->c;
+    $slave->c( shift );           
 
     return $slave;
 
-}
+}#bunch
 
 1;
