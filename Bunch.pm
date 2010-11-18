@@ -1,4 +1,64 @@
 
+package Catalyst::Plugin::Bunch::File::Handler;
+use Moose;
+
+use File::Util;
+
+has fu => ( is => 'ro', isa => 'File::Util', 
+    default => sub { File::Util->new } );
+
+has path_to => ( is => 'rw', isa => 'Str', default => 'root/' );
+
+has base_url => ( is => 'rw', isa => 'Str', default => '/' );
+
+has extention => ( is => 'rw', isa => 'Str' );
+
+sub full_path {
+    my ( $self, $f ) = @_;
+
+    join '', $self->path_to, $f, '.', $self->extention;
+
+}
+
+sub url_to {
+    my ( $self, $f ) = @_;
+
+    join '', $self->base_url, $f, '.', $self->extention;
+
+}
+
+sub load {
+    my ( $self, $f ) = @_;
+
+    $self->fu->load_file( $self->full_path( $f ) );
+
+}#load
+
+sub save {
+    my ( $self, $f, $content ) = @_;
+
+    $self->fu->write_file( 
+        'file' => $self->full_path( $f ), 
+        'content' => $content, 
+    );
+
+}#save
+
+sub exist {
+    my ( $self, $f ) = @_;
+
+    $self->fu->existent( $self->full_path( $f ) );
+
+}#exist
+
+sub last_modified {
+    my ( $self, $f ) = @_;
+
+    $self->fu->last_modified( $self->full_path( $f ) );
+
+}#last_modified
+
+
 package Catalyst::Plugin::Bunch::Slave;
 use MooseX::Singleton;
 
@@ -12,23 +72,24 @@ sub load {
     my ( $self, $type ) = @_;
     
     my $files = $self->$type;
-    
+
     my $config = $self->c->config->{ Bunch };
 
-    my $model = $self->c->model( $config->{ model }->{ $type } );
+    my $file_handler = Catalyst::Plugin::Bunch::File::Handler->new(
+        path_to   => "root/static/$type/",
+        base_url  => "/$type/",
+        extention => $type,
+    );
 
     my $lang = $self->c->session->{ locale }->{ lang };
-    map { $_ = "$lang/$_" if $model->exist( "$lang/$_" ) } @$files; 
+    map { $_ = "$lang/$_" if $file_handler->exist( "$lang/$_" ) } @$files; 
 
-    $self->c->log->info( $lang );
-    $self->c->log->info( $_ ) foreach @{ $self->$type };
-
-    my @lm = map { $model->last_modified( $_ ) } @$files;
+    my @lm = map { $file_handler->last_modified( $_ ) } @$files;
 
     use Digest::MD5 qw/ md5_hex /;
     my $md5 = md5_hex( join '', ( @$files, @lm, $config->{ minify } ) );
 
-    if ( $model->exist( "bunch/$md5" ) ) {        
+    if ( $file_handler->exist( "bunch/$md5" ) ) {        
         $self->c->log->info( "Банч $md5 типа $type загружен." );
 
     } 
@@ -36,7 +97,7 @@ sub load {
         my $default = $config->{ default_libs }->{ $type };
 
         my $text;
-        $text .= $model->load( $_ ) foreach ( @$default, @$files );
+        $text .= $file_handler->load( $_ ) foreach ( @$default, @$files );
 
         if ( $config->{ minify } ) {
             my $minifier = $config->{ minifiers }->{ $type };
@@ -45,7 +106,7 @@ sub load {
 
         }#if
 
-        $model->save( "bunch/$md5", $text );
+        $file_handler->save( "bunch/$md5", $text );
 
         $self->c->log->info( "Банч $md5 типа $type создан и загружен." );
 
@@ -53,7 +114,7 @@ sub load {
 
     $self->$type( [ ] );
 
-    return $model->url_to( "bunch/$md5" );
+    return $file_handler->url_to( "bunch/$md5" );
 
 }#load
 
