@@ -1,47 +1,19 @@
 
-package Catalyst::Plugin::SOAP::Slave;
-use MooseX::Singleton;
+package Catalyst::Plugin::SOAP;
 
 use SOAP::WSDL;
 
-has c => ( is => 'rw', isa => 'Object' );
-
-sub send {         
-    my ( $self, $service, $method, $args ) = @_;
-
-    SOAP::WSDL
-        ->new( wsdl => $service )
-        ->call( $method, $method => $args );
-  
-}#send
-
-sub AUTOLOAD {
-    my $self = shift;
-
-    our $AUTOLOAD;
-
-    $AUTOLOAD =~ /\:\:([^\:]+)$/;
-
-    my $service = $self->c->config->{ 'Plugin::SOAP' }->{ $1 };
-
-    if ( $service ) {
-#        return $self->send( $service, $2 ); 
-    } 
-    else {
-        $self->c->log->error( "Unknown SOAP service $1 !" );
-    }
-    
-}#AUTOLOAD
-
-package Catalyst::Plugin::SOAP;
-
 sub SOAP {
-    my $slave = Catalyst::Plugin::SOAP::Slave->instance;
+    my ( $c, $service, $method, $args ) = @_;
 
-    $slave->c( shift );
+    my $wsdl = $c->config->{ 'Plugin::SOAP' }->{ $service }->{ wsdl };
 
-    return $slave;
+    die "Unknown SOAP service $service !" unless $wsdl;
 
+    my $client = SOAP::WSDL->new( wsdl => $wsdl );
+
+    $client->call( $method, $method => $args );
+ 
 }
 
 1;
