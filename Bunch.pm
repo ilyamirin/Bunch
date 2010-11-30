@@ -70,10 +70,13 @@ has css => ( is => 'rw', isa => 'ArrayRef', default => sub { [ ] } );
 
 sub load {
     my ( $self, $type ) = @_;
-    
-    my $files = $self->$type;
 
     my $config = $self->c->config->{ Bunch };
+
+    my @files = ( 
+        @{ $config->{ default_libs }->{ $type } }, 
+        @{ $self->$type } 
+    );
 
     my $file_handler = Catalyst::Plugin::Bunch::File::Handler->new(
         path_to   => "root/static/$type/",
@@ -82,22 +85,20 @@ sub load {
     );
 
     my $lang = $self->c->session->{ locale }->{ lang };
-    map { $_ = "$lang/$_" if $file_handler->exist( "$lang/$_" ) } @$files; 
+    map { $_ = "$lang/$_" if $file_handler->exist( "$lang/$_" ) } @files; 
 
-    my @lm = map { $file_handler->last_modified( $_ ) } @$files;
+    my @lm = map { $file_handler->last_modified( $_ ) } @files;
 
     use Digest::MD5 qw/ md5_hex /;
-    my $md5 = md5_hex( join '', ( @$files, @lm, $config->{ minify } ) );
+    my $md5 = md5_hex( join '', ( @files, @lm, $config->{ minify } ) );
 
     if ( $file_handler->exist( "bunch/$md5" ) ) {        
         $self->c->log->info( "Банч $md5 типа $type загружен." );
 
     } 
     else { 
-        my $default = $config->{ default_libs }->{ $type };
-
         my $text;
-        $text .= $file_handler->load( $_ ) foreach ( @$default, @$files );
+        $text .= $file_handler->load( $_ ) foreach @files;
 
         if ( $config->{ minify } ) {
             my $minifier = $config->{ minifiers }->{ $type };
