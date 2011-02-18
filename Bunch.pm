@@ -33,7 +33,7 @@ sub load {
     use Digest::MD5 qw/ md5_hex /;
     my $md5 = md5_hex( join '', ( @files, @lm, $config->{ minify } ) );
 
-    if ( $file_handler->exist( "bunch/$md5" ) ) {
+    if ( $file_handler->exist( "bunch/$md5" ) && !$config->{ nocache } ) {
         $self->c->log->debug( "Bunch: Файл $md5 типа $type загружен." ) if $config->{ debug };
 
     }
