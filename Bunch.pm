@@ -47,7 +47,11 @@ sub load {
         if ( $config->{ minify } ) {
             my $minifier = $config->{ minifiers }->{ $type };
             eval "use $minifier qw/ minify /";
-            $text = minify( $text ) ;
+            if($@){
+                $self->c->log->error("Bunch: minifier [$minifier] can't load. WTF?");
+            } else {
+                $text = minify( $text ) ;
+            }
 
         }#if
 
@@ -84,6 +88,9 @@ sub AUTOLOAD {
 }#AUTOLOAD
 
 package Catalyst::Plugin::Bunch;
+
+our $VERSION='1.01';
+$VERSION = eval $VERSION;
 
 sub bunch {
     my $slave = Catalyst::Plugin::Bunch::Slave->instance;
